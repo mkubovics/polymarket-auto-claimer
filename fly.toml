@@ -1,0 +1,19 @@
+# fly.toml for Polymarket Auto-Claimer
+app = "polymarket-claimer"
+primary_region = "ams"  # Amsterdam 
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[build]
+  dockerfile = "Dockerfile.fly"
+
+[env]
+  NODE_ENV = "production"
+
+[experimental]
+  auto_rollback = true
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256

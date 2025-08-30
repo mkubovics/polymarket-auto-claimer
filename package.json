@@ -1,0 +1,27 @@
+{
+  "name": "polymarket-auto-claimer-simple",
+  "version": "1.0.0",
+  "description": "Simple auto-claimer for Polymarket winnings",
+  "main": "dist/simple-claimer.js",
+  "scripts": {
+    "build": "tsc",
+    "claim": "ts-node src/simple-claimer.ts",
+    "claim:prod": "node dist/simple-claimer.js",
+    "test": "TEST_MODE=true ts-node src/simple-claimer.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@safe-global/protocol-kit": "^4.1.0",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

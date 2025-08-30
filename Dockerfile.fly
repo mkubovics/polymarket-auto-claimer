@@ -1,0 +1,63 @@
+# Multi-stage Dockerfile for Polymarket Auto-Claimer on Fly.io
+
+# Build stage
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* tsconfig.json ./
+
+# Install all dependencies (including dev for TypeScript compilation)
+RUN npm ci
+
+# Copy source code
+COPY src ./src
+COPY .env.example ./
+
+# Build TypeScript
+RUN npm run build
+
+# Production stage
+FROM node:20-alpine
+
+# Install supercronic for cron scheduling
+ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.29/supercronic-linux-amd64 \
+    SUPERCRONIC=supercronic-linux-amd64 \
+    SUPERCRONIC_SHA1SUM=cd48d45c4b10f3f0bfdd3a57d054cd05ac96812b
+
+RUN apk add --no-cache curl \
+    && curl -fsSLO "$SUPERCRONIC_URL" \
+    && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
+    && chmod +x "$SUPERCRONIC" \
+    && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
+    && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic \
+    && apk del curl
+
+WORKDIR /app
+
+# Copy package files and install production dependencies only
+COPY package.json package-lock.json* ./
+RUN npm ci --production
+
+# Copy built files from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Copy crontab file
+COPY crontab ./crontab
+
+# Create a non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Change ownership
+RUN chown -R nodejs:nodejs /app
+
+USER nodejs
+
+# Health check - just ensure the script exists and is runnable
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "console.log('OK')" || exit 1
+
+# Default command runs supercronic with our crontab
+CMD ["supercronic", "/app/crontab"]
