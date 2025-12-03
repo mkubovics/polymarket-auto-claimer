@@ -22,17 +22,30 @@ npm install --production
 ```
 
 ### 3. Configure
-Copy `.env.simple` to `.env` and add your details:
+You can keep the secrets file outside the repository (recommended). The loader searches in this order (first hit wins unless you explicitly pass `--env-file`):
+1. `--env-file <path>` or `--env-file=path`
+2. `ENV_PATH` environment variable
+3. Parent directory: `../.env`
+4. Repository root: `./.env`
+
+Example `.env` (wherever you place it):
 ```env
-PRIVATE_KEY=your_metamask_private_key
-PROXY_ADDRESS=your_gnosis_safe_address  
+PK=your_metamask_private_key
+POLYMARKET_PROXY_ADDRESS=your_gnosis_safe_address  
 RPC_URL=https://polygon-rpc.com
+# Optional:
+# LOOP_INTERVAL_MINUTES=60
+# TEST_MODE=true
 ```
 
 **Where to find these:**
-- `PRIVATE_KEY`: MetaMask → Account Details → Export Private Key
-- `PROXY_ADDRESS`: Polymarket → Profile → Wallet Settings → Safe Address
+- `PK`: MetaMask → Account Details → Export Private Key (use a low-privileged key / owner)
+- `POLYMARKET_PROXY_ADDRESS`: Polymarket → Profile → Wallet Settings → Safe Address
 - `RPC_URL`: Use the default or get free from [Alchemy](https://alchemy.com)
+
+> Migration Note: Environment variables were renamed for clarity.
+> Old names `PRIVATE_KEY` and `PROXY_ADDRESS` have been replaced with `PK` and `POLYMARKET_PROXY_ADDRESS`.
+> Update your `.env` accordingly. If you still have the old keys set, the script will now error with a missing variable message until you rename them.
 
 ### 4. Run
 ```bash
@@ -48,6 +61,32 @@ That's it! The script will claim all your winnings.
 npm run claim
 ```
 
+### Option 1b: Manual Loop Mode (built-in)
+Run continuously every 60 minutes (default):
+```bash
+node dist/simple-claimer.js --loop
+```
+Customize interval (e.g. every 30 minutes):
+```bash
+node dist/simple-claimer.js --loop --interval 30
+```
+Or (equals syntax):
+```bash
+node dist/simple-claimer.js --loop --interval=15
+```
+Dry-run plus loop:
+```bash
+node dist/simple-claimer.js --loop --interval 120 --dry-run
+```
+
+Environment variable alternative (implies loop if set):
+```bash
+export LOOP_INTERVAL_MINUTES=45
+node dist/simple-claimer.js
+```
+
+Graceful shutdown: press Ctrl+C once; it finishes the current iteration and exits.
+
 ### Option 2: Schedule with Cron (Linux/Mac)
 ```bash
 # Run every hour
@@ -60,6 +99,23 @@ crontab -e
 docker build -f Dockerfile.simple -t polymarket-claimer .
 docker run --env-file .env polymarket-claimer
 ```
+
+If your `.env` lives outside the repo (one level up):
+```bash
+docker run --env-file ../.env polymarket-claimer
+```
+
+Or specify explicitly:
+```bash
+docker run -e ENV_PATH=/secrets/polymarket.env -v /secrets/polymarket.env:/secrets/polymarket.env:ro polymarket-claimer
+```
+
+To use loop mode inside Docker without external cron, override the command:
+```bash
+docker run --env-file .env polymarket-claimer node dist/simple-claimer.js --loop --interval 60
+```
+
+(If you are already using the provided Fly.io / cron setup, you do NOT need --loop.)
 
 ### Option 4: Supabase Edge Function (Serverless)
 ```bash
